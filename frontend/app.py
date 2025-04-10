@@ -1,5 +1,5 @@
 import streamlit as st
-from rag_chain_of_thought import rag_chatbot_pipeline
+from rag.rag_chain_of_thought import rag_chatbot_pipeline
 import time
 import psycopg2
 from config.settings import DB_CONFIG

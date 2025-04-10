@@ -30,7 +30,7 @@ for message in consumer:
 
     print(f"📂 Processing file: {file_name} from bucket: {bucket}")
 
-    local_dir = "pdfs"
+    local_dir = "../pdfs"
     os.makedirs(local_dir, exist_ok=True)
     local_path = os.path.join(local_dir, os.path.basename(file_name))
 
