@@ -30,13 +30,25 @@ def clean_evaluation_text(text):
 
     text = re.sub(r'\s+', ' ', text)
 
-    course_name_match = re.search(r'Netwrk Strctrs Cloud Cmpting \((Spring|Fall) \d{4}\)', text)
+    course_name_match = re.search(r'([A-Za-z0-9\s:&\-]+)(?=\s+\((Spring|Fall)\s+\d{4}\))', text)
     if course_name_match:
-        results['course_info']['course_name'] = course_name_match.group(0)
+        results['course_info']['course_name'] = course_name_match.group(1).strip()
 
-    instructor_match = re.search(r'Instructor:\s*([\w\s,]+)', text)
+    instructor_match = re.search(r'Instructor:\s*([^\n\r]+)', text)
     if instructor_match:
-        results['course_info']['instructor'] = instructor_match.group(1).strip()
+        name_raw = instructor_match.group(1).strip()
+
+        # Trim if subject or other fields are accidentally pulled in
+        name_raw = re.split(r'Subject:|Catalog & Section:|Enrollment:', name_raw)[0].strip()
+
+        # Normalize "Last, First" to "First Last"
+        if "," in name_raw:
+            last, first = name_raw.split(",", 1)
+            instructor_name = f"{first.strip()} {last.strip()}"
+        else:
+            instructor_name = name_raw
+
+        results['course_info']['instructor'] = instructor_name
 
     subject_match = re.search(r'Subject:\s*(\w+)', text)
     if subject_match:

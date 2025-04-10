@@ -27,14 +27,21 @@ def generate_chain_of_thought(question):
     return response.choices[0].message.content.strip()
 
 
-def search_pinecone(rephrased_question, top_k=5):
-    """Search Pinecone using the reformulated reasoning"""
+def search_pinecone(query, professor=None, top_k=5):
+    query_vector = get_openai_embedding(query)
     pc = Pinecone(api_key=PINECONE_API_KEY)
     index = pc.Index(PINECONE_INDEX)
-    query_vector = get_openai_embedding(rephrased_question)
 
-    results = index.query(vector=query_vector, top_k=top_k, include_metadata=True)
+    filter_dict = {"professor": professor} if professor else None
+
+    results = index.query(
+        vector=query_vector,
+        top_k=top_k,
+        include_metadata=True,
+        filter=filter_dict
+    )
     return results.matches
+
 
 
 def generate_answer(question, context_chunks):
@@ -79,20 +86,18 @@ Summary:"""
     return response.choices[0].message.content.strip()
 
 
-def rag_chatbot_pipeline(user_question, history=None):
-    # Build memory summary if long enough
+def rag_chatbot_pipeline(user_question, history=None, professor=None):
     memory_summary = ""
-    if history and len(history) >= 3:
-        memory_summary = summarize_history(history[:-1])  # exclude latest question
-
-    # Include memory summary in question for CoT
-    if memory_summary:
+    if history and len(history) >= 3 and len(history) % 3 == 0:
+        memory_summary = summarize_history(history[:-1])
         user_question = f"Context: {memory_summary}\n\nNow answer this:\n{user_question}"
 
     rephrased_question = generate_chain_of_thought(user_question)
-    chunks = search_pinecone(rephrased_question)
+    chunks = search_pinecone(rephrased_question, professor=professor)
     final_answer = generate_answer(user_question, chunks)
+
     return final_answer, memory_summary
+
 
 
 # === Run the flow ===

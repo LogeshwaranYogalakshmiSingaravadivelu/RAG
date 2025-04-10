@@ -1,14 +1,11 @@
 from pinecone import Pinecone, ServerlessSpec
-from config.settings import DB_CONFIG
-from embedding.chunker import generate_chunks_from_db
 from embedding.embedder import get_openai_embedding
 
-
-def upload_chunks_to_pinecone(index_name, api_key, environment):
+def upload_chunks_to_pinecone(chunks, index_name, api_key, environment):
     # Init Pinecone client
     pc = Pinecone(api_key=api_key)
 
-    # Make sure index exists
+    # Create index if it doesn't exist
     if index_name not in pc.list_indexes().names():
         pc.create_index(
             name=index_name,
@@ -16,24 +13,24 @@ def upload_chunks_to_pinecone(index_name, api_key, environment):
             metric="cosine",
             spec=ServerlessSpec(
                 cloud="aws",
-                region=environment.split("-")[0]  # extract region, e.g., "us-east-1"
+                region=environment.split("-")[0]  # e.g., "us-east-1"
             )
         )
-        print(f"Created Pinecone index: {index_name}")
+        print(f"✅ Created Pinecone index: {index_name}")
 
     index = pc.Index(index_name)
 
-    # Generate and upload embeddings
-    chunks = generate_chunks_from_db()
+    # Upload embeddings
     for chunk in chunks:
         try:
             vector = get_openai_embedding(chunk["text"])
-            index.upsert(vectors=[
+            index.upsert([
                 {
                     "id": chunk["id"],
                     "values": vector,
                     "metadata": {
-                        "chunk_type": chunk["chunk_type"],
+                        "professor": chunk.get("professor", "Unknown"),
+                        "chunk_type": chunk.get("chunk_type", "unknown"),
                         "text": chunk["text"]
                     }
                 }

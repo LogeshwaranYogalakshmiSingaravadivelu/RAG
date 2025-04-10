@@ -1,4 +1,7 @@
+version: '3.8'
+
 services:
+  # --- PostgreSQL ---
   db:
     image: postgres:13
     container_name: postgres_db
@@ -7,13 +10,14 @@ services:
       POSTGRES_PASSWORD: yourpassword
       POSTGRES_DB: yourdbname
     ports:
-      - "5433:5432"  # Changed from 5432:5432 to use port 5433 on host
+      - "5433:5432"  # Host 5433 → Container 5432
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - my_network
     restart: unless-stopped
 
+  # --- pgAdmin ---
   pgadmin:
     image: dpage/pgadmin4
     container_name: pgadmin4
@@ -29,6 +33,36 @@ services:
       - my_network
     depends_on:
       - db
+    restart: unless-stopped
+
+  # --- Zookeeper (required for Kafka) ---
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - my_network
+    restart: unless-stopped
+
+  # --- Kafka ---
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - my_network
     restart: unless-stopped
 
 volumes:
