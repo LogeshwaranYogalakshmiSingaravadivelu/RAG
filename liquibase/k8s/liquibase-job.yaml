@@ -1,0 +1,25 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: liquibase-init
+spec:
+  template:
+    spec:
+      containers:
+      - name: liquibase
+        image: logesh2001/liquibase-init:latest
+        command: ["liquibase"]
+        args:
+          [
+            "--changeLogFile=db/changelog/db.changelog-master.yaml",
+            "--url=jdbc:postgresql://postgres:5432/yourdbname",
+            "--username=youruser",
+            "--password=yourpassword",
+            "--driver=org.postgresql.Driver",
+            "update"
+          ]
+        env:
+        - name: JAVA_TOOL_OPTIONS
+          value: "-Duser.timezone=UTC"
+      restartPolicy: Never
+  backoffLimit: 1

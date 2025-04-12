@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-pdf-consumer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-pdf-consumer
+  template:
+    metadata:
+      labels:
+        app: kafka-pdf-consumer
+    spec:
+      containers:
+        - name: kafka-pdf-consumer
+          image: logesh2001/kafka-pdf-consumer:latest
+          env:
+            - name: POSTGRES_DB
+              value: "yourdbname"
+            - name: POSTGRES_USER
+              value: "youruser"
+            - name: POSTGRES_PASSWORD
+              value: "yourpassword"
+            - name: PINECONE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: PINECONE_API_KEY
+            - name: PINECONE_ENVIRONMENT
+              value: "us-east-1-aws"
+            - name: PINECONE_INDEX
+              value: "trace-chatbot-index"
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: "/secrets/gcp.json"
+          volumeMounts:
+            - name: gcp-creds
+              mountPath: /secrets
+              readOnly: true
+      volumes:
+        - name: gcp-creds
+          configMap:
+            name: gcp-config

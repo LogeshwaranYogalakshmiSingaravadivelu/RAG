@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pubsub-to-kafka
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pubsub-to-kafka
+  template:
+    metadata:
+      labels:
+        app: pubsub-to-kafka
+    spec:
+      containers:
+        - name: pubsub-to-kafka
+          image: logesh2001/pubsub-to-kafka:latest
+          env:
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: "/secrets/gcp.json"
+          volumeMounts:
+            - name: gcp-creds
+              mountPath: /secrets
+              readOnly: true
+      volumes:
+        - name: gcp-creds
+          configMap:
+            name: gcp-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pubsub-to-kafka
+spec:
+  selector:
+    app: pubsub-to-kafka
+  ports:
+    - port: 80
+      targetPort: 8080

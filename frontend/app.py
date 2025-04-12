@@ -1,26 +1,25 @@
 import streamlit as st
-from rag.rag_chain_of_thought import rag_chatbot_pipeline
 import time
-import psycopg2
-from config.settings import DB_CONFIG
+import requests
 
 st.set_page_config(page_title="Professor Q&A Bot", page_icon="🤖")
 
 st.title("📚 Professor Feedback Chatbot")
 st.markdown("Ask a question about any professor based on TRACE survey data.")
 
-# 🔄 Load professor names from PostgreSQL
 @st.cache_data
-def get_professors_from_db():
-    conn = psycopg2.connect(**DB_CONFIG)
-    cursor = conn.cursor()
-    cursor.execute("SELECT DISTINCT instructor_name FROM course_info")
-    rows = cursor.fetchall()
-    conn.close()
-    return sorted([row[0] for row in rows if row[0]])
+def get_professors():
+    try:
+        response = requests.get("http://rag-api:8000/professors")  # Use your RAG API service name or IP
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        st.error(f"❌ Failed to load professor list: {e}")
+        return []
+
 
 # Professor selection dropdown
-professors = get_professors_from_db()
+professors = get_professors()
 selected_prof = st.selectbox("👩‍🏫 Select Professor", professors)
 
 # Initialize chat history
@@ -49,7 +48,23 @@ if user_input:
         placeholder.markdown("🤖 Thinking...")
 
     # 🔁 Pass full history and selected professor
-    answer, summary = rag_chatbot_pipeline(user_input, history=st.session_state.chat_history, professor=selected_prof)
+    try:
+        response = requests.post(
+            "http://rag-api:8000/rag/ask",  # Update this URL based on your deployment
+            json={
+                "question": user_input,
+                "history": st.session_state.chat_history,
+                "professor": selected_prof
+            },
+            timeout=30
+        )
+        response.raise_for_status()
+        result = response.json()
+        answer = result.get("answer", "⚠️ No answer received.")
+        summary = result.get("summary", None)
+    except Exception as e:
+        answer = f"❌ Error: {str(e)}"
+        summary = None
 
     # Animate assistant's reply
     full_response = ""
